@@ -1,0 +1,155 @@
+// server.js - Copy everything below this line
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+
+const app = express();
+
+app.use(helmet());
+app.use(cors({ origin: '*' }));
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100
+});
+app.use('/api/', limiter);
+
+app.use(express.json({ limit: '50mb' }));
+
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    openaiConfigured: !!process.env.OPENAI_API_KEY,
+    youtubeConfigured: !!process.env.YOUTUBE_API_KEY
+  });
+});
+
+async function fetchPlantImage(scientificName, commonName) {
+  try {
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(scientificName)}`;
+    const response = await fetch(url);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.thumbnail?.source) {
+        return data.thumbnail.source.replace(/\/\d+px-/, '/800px-');
+      }
+    }
+  } catch (error) {
+    console.error('Image fetch error:', error);
+  }
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect fill='%2310B981' width='400' height='400'/%3E%3Ctext x='50%25' y='45%25' font-size='60' text-anchor='middle'%3E🌿%3C/text%3E%3Ctext x='50%25' y='60%25' font-size='16' fill='white' text-anchor='middle'%3E${encodeURIComponent(commonName)}%3C/text%3E%3C/svg%3E`;
+}
+
+app.post('/api/identify-plant', async (req, res) => {
+  try {
+    const { image } = req.body;
+    
+    if (!image) {
+      return res.status(400).json({ error: 'No image provided' });
+    }
+    
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+    
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Analyze this plant image. Return ONLY valid JSON array with top 3 matches: [{"scientificName": "Name", "commonName": "Name", "confidenceScore": 95, "isEdible": true/false, "edibleParts": ["parts"], "description": "Brief description"}]'
+            },
+            { type: 'image_url', image_url: { url: image } }
+          ]
+        }],
+        max_tokens: 1500
+      })
+    });
+    
+    if (!openaiResponse.ok) {
+      const error = await openaiResponse.json();
+      return res.status(500).json({ error: error.error?.message || 'OpenAI error' });
+    }
+    
+    const data = await openaiResponse.json();
+    const content = data.choices[0].message.content;
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    
+    if (!jsonMatch) {
+      return res.status(500).json({ error: 'Invalid response format' });
+    }
+    
+    const plants = JSON.parse(jsonMatch[0]);
+    
+    const plantsWithImages = await Promise.all(
+      plants.map(async (plant, index) => {
+        const imageUrl = await fetchPlantImage(plant.scientificName, plant.commonName);
+        return { ...plant, id: index + 1, imageUrl };
+      })
+    );
+    
+    res.json({ success: true, plants: plantsWithImages });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/recipes', async (req, res) => {
+  try {
+    const plantsQuery = req.query.plants;
+    
+    if (!plantsQuery || !process.env.YOUTUBE_API_KEY) {
+      return res.json({ success: true, recipes: [] });
+    }
+    
+    const plantNames = plantsQuery.split(',').map(p => p.trim());
+    const recipes = [];
+    
+    for (const plantName of plantNames.slice(0, 3)) {
+      try {
+        const searchQuery = encodeURIComponent(`${plantName} recipe cooking`);
+        const response = await fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${searchQuery}&type=video&maxResults=1&key=${process.env.YOUTUBE_API_KEY}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.items?.[0]) {
+            const video = data.items[0];
+            recipes.push({
+              id: video.id.videoId,
+              title: video.snippet.title,
+              youtubeUrl: `https://www.youtube.com/watch?v=${video.id.videoId}`,
+              plants: [plantName]
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Recipe error for ${plantName}:`, error);
+      }
+    }
+    
+    res.json({ success: true, recipes });
+  } catch (error) {
+    res.json({ success: true, recipes: [] });
+  }
+});
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`\n🌿 PlantDexPro Backend`);
+  console.log(`✓ Server: http://localhost:${PORT}`);
+  console.log(`✓ OpenAI: ${process.env.OPENAI_API_KEY ? 'Configured' : 'Missing'}`);
+  console.log(`✓ YouTube: ${process.env.YOUTUBE_API_KEY ? 'Configured' : 'Not set (optional)'}\n`);
+});
