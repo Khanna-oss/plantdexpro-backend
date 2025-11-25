@@ -32,15 +32,17 @@ const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
 // --- Helper: Get High-Quality Wiki Image ---
 async function getWikiImage(scientificName) {
     try {
-        const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${encodeURIComponent(scientificName)}&pithumbsize=600`;
-        const response = await axios.get(url);
-        const pages = response.data.query.pages;
-        const pageId = Object.keys(pages)[0];
+        // Try scientific name first
+        let url = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${encodeURIComponent(scientificName)}&pithumbsize=600`;
+        let response = await axios.get(url);
+        let pages = response.data.query.pages;
+        let pageId = Object.keys(pages)[0];
+        
         if (pages[pageId] && pages[pageId].thumbnail) {
             return pages[pageId].thumbnail.source;
         }
     } catch (e) {
-        console.log("   ! Wiki Image fetch failed, falling back.");
+        console.log("   ! Wiki Image fetch failed.");
     }
     return null;
 }
@@ -66,7 +68,6 @@ async function identifyWithPlantNet(base64Image) {
         plantName: bestMatch.species.commonNames[0] || bestMatch.species.scientificNameWithoutAuthor,
         scientificName: bestMatch.species.scientificNameWithoutAuthor,
         probability: bestMatch.score,
-        // Fallback ref image from API
         apiImage: bestMatch.images && bestMatch.images.length > 0 ? bestMatch.images[0].url.m : null
     };
 }
@@ -118,15 +119,14 @@ app.post('/api/identify-plant', async (req, res) => {
         return res.status(500).json({ error: 'Identification failed. Check API Key or Quota.' });
     }
 
-    // --- Step 1.5: Get Better Image (Wiki) ---
-    // We try to get a Wiki image. If that fails, we use the API image. 
-    // If that is also null, the Frontend will use the user's upload.
+    // --- Step 1.5: Get Best Image ---
+    // Try Wiki -> API Image -> Null (Frontend will handle fallback)
     const wikiImage = await getWikiImage(plantData.scientificName);
     const finalDisplayImage = wikiImage || plantData.apiImage;
 
     // --- Step 2: Gemini Safety Analysis ---
     console.log('2. Safety Check...');
-    let safetyData = { isEdible: false, toxicParts: [], safetyWarnings: [] };
+    let safetyData = { isEdible: false, toxicParts: [], safetyWarnings: [], description: "" };
     
     try {
         const safetyPrompt = `
@@ -154,14 +154,14 @@ app.post('/api/identify-plant', async (req, res) => {
         }
     } catch (geminiError) {
         console.error("   ! Gemini Error:", geminiError.message);
-        safetyData.description = `Identified as ${plantData.plantName}. Safety info unavailable.`;
+        safetyData.description = `Identified as ${plantData.plantName}. Safety info temporarily unavailable.`;
     }
 
     // --- Step 3: YouTube Recipes ---
+    // FIX: We now attempt to fetch recipes regardless of safety check success,
+    // as long as we have a valid plant name and API key.
     let videos = [];
-    // We allow recipes if the plant is generally known, regardless of strict edible flag, 
-    // so the user can see results.
-    if (YOUTUBE_KEY) {
+    if (YOUTUBE_KEY && plantData.plantName) {
         console.log('3. Finding Recipes...');
         try {
             const ytResponse = await axios.get(YOUTUBE_API_URL, {
@@ -173,12 +173,16 @@ app.post('/api/identify-plant', async (req, res) => {
                     key: YOUTUBE_KEY
                 }
             });
-            videos = ytResponse.data.items.map(item => ({
-                title: item.snippet.title,
-                channel: item.snippet.channelTitle,
-                link: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-                thumbnail: item.snippet.thumbnails.medium.url
-            }));
+            
+            if (ytResponse.data.items) {
+                videos = ytResponse.data.items.map(item => ({
+                    title: item.snippet.title,
+                    channel: item.snippet.channelTitle,
+                    link: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+                    thumbnail: item.snippet.thumbnails.medium.url,
+                    duration: "Video" // YouTube API part=contentDetails needed for real duration, saving quota by skipping
+                }));
+            }
         } catch (ytError) {
             console.error("   ! YouTube Error:", ytError.message);
         }
@@ -189,7 +193,7 @@ app.post('/api/identify-plant', async (req, res) => {
       commonName: plantData.plantName,
       scientificName: plantData.scientificName,
       confidenceScore: plantData.probability,
-      imageUrl: finalDisplayImage, // Prioritizes Wiki Image
+      imageUrl: finalDisplayImage, 
       videos: videos,
       ...safetyData
     };
