@@ -20,7 +20,6 @@ const GEMINI_KEY = (process.env.GEMINI_API_KEY || process.env.API_KEY || '').tri
 
 const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3/search';
 
-// --- Startup Check ---
 console.log("--- API Key Status ---");
 console.log(`Plant Key:    ${PLANT_KEY ? 'Loaded' : 'MISSING'}`);
 console.log(`YouTube Key:  ${YOUTUBE_KEY ? 'Loaded' : 'MISSING'}`);
@@ -30,19 +29,31 @@ console.log("----------------------");
 const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
 
 // --- Helper: Get High-Quality Wiki Image ---
-async function getWikiImage(scientificName) {
+async function getWikiImage(query) {
+    if (!query) return null;
     try {
-        // Try scientific name first
-        let url = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${encodeURIComponent(scientificName)}&pithumbsize=600`;
-        let response = await axios.get(url);
-        let pages = response.data.query.pages;
-        let pageId = Object.keys(pages)[0];
+        // Wikipedia REST API is often more reliable for summaries/thumbnails
+        const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`;
+        const response = await axios.get(url);
         
-        if (pages[pageId] && pages[pageId].thumbnail) {
-            return pages[pageId].thumbnail.source;
+        if (response.data && response.data.thumbnail && response.data.thumbnail.source) {
+            return response.data.thumbnail.source;
         }
     } catch (e) {
-        console.log("   ! Wiki Image fetch failed.");
+        // Silent fail, will try next method
+    }
+    return null;
+}
+
+async function getBestPlantImage(scientificName, commonName) {
+    // 1. Try Scientific Name (most accurate)
+    let img = await getWikiImage(scientificName);
+    if (img) return img;
+
+    // 2. Try Common Name (fallback)
+    if (commonName) {
+        img = await getWikiImage(commonName);
+        if (img) return img;
     }
     return null;
 }
@@ -103,10 +114,9 @@ app.post('/api/identify-plant', async (req, res) => {
     const { image } = req.body; 
     if (!image) return res.status(400).json({ error: 'Image data required' });
 
-    // --- Step 1: Identify ---
+    // 1. Identify
     console.log('1. Identifying Plant...');
     let plantData;
-
     try {
         if (PLANT_KEY.startsWith('2a') || PLANT_KEY.startsWith('2b')) {
             plantData = await identifyWithPlantNet(image);
@@ -116,22 +126,21 @@ app.post('/api/identify-plant', async (req, res) => {
         console.log(`   > Found: ${plantData.plantName}`);
     } catch (apiError) {
         console.error("   ! ID API Error:", apiError.response?.data || apiError.message);
-        return res.status(500).json({ error: 'Identification failed. Check API Key or Quota.' });
+        return res.status(500).json({ error: 'Identification failed. Check API Key.' });
     }
 
-    // --- Step 1.5: Get Best Image ---
-    // Try Wiki -> API Image -> Null (Frontend will handle fallback)
-    const wikiImage = await getWikiImage(plantData.scientificName);
-    const finalDisplayImage = wikiImage || plantData.apiImage;
+    // 1.5 Get Best Image
+    const wikiImage = await getBestPlantImage(plantData.scientificName, plantData.plantName);
+    const finalDisplayImage = wikiImage || plantData.apiImage; 
 
-    // --- Step 2: Gemini Safety Analysis ---
+    // 2. Safety Analysis
     console.log('2. Safety Check...');
     let safetyData = { isEdible: false, toxicParts: [], safetyWarnings: [], description: "" };
     
     try {
         const safetyPrompt = `
           Analyze the plant "${plantData.plantName}" (Scientific: ${plantData.scientificName}).
-          Return strict JSON:
+          Return strict JSON (no markdown):
           {
             "isEdible": boolean,
             "edibleParts": ["string"],
@@ -140,7 +149,6 @@ app.post('/api/identify-plant', async (req, res) => {
             "description": "Brief 2 sentence description."
           }
         `;
-
         const geminiResponse = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: safetyPrompt,
@@ -154,19 +162,20 @@ app.post('/api/identify-plant', async (req, res) => {
         }
     } catch (geminiError) {
         console.error("   ! Gemini Error:", geminiError.message);
-        safetyData.description = `Identified as ${plantData.plantName}. Safety info temporarily unavailable.`;
+        safetyData.description = `Identified as ${plantData.plantName}. Safety info unavailable.`;
     }
 
-    // --- Step 3: YouTube Contextual Search ---
-    // If Edible -> Search Recipes
-    // If Not Edible -> Search Benefits/Care
+    // 3. YouTube Recipes or Care Guides
     let videos = [];
-    let videoContext = safetyData.isEdible ? "recipes" : "uses"; // To tell frontend what kind of videos these are
+    let videoContext = "recipes"; // Default
 
     if (YOUTUBE_KEY && plantData.plantName) {
+        // If NOT edible, search for benefits/care. If edible, search recipes.
+        videoContext = safetyData.isEdible ? "recipes" : "uses";
+        
         const searchTerm = safetyData.isEdible 
             ? `how to cook ${plantData.plantName} recipe`
-            : `${plantData.plantName} plant benefits and uses`;
+            : `${plantData.plantName} plant benefits care uses`;
             
         console.log(`3. Finding Videos (${searchTerm})...`);
         try {
@@ -200,7 +209,7 @@ app.post('/api/identify-plant', async (req, res) => {
       confidenceScore: plantData.probability,
       imageUrl: finalDisplayImage, 
       videos: videos,
-      videoContext: videoContext, // Pass this to frontend
+      videoContext: videoContext,
       ...safetyData
     };
 
@@ -208,7 +217,7 @@ app.post('/api/identify-plant', async (req, res) => {
 
   } catch (error) {
     console.error('SERVER FATAL:', error.message);
-    res.status(500).json({ error: 'Internal Server Error: ' + error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
