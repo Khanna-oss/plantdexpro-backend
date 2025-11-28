@@ -157,18 +157,24 @@ app.post('/api/identify-plant', async (req, res) => {
         safetyData.description = `Identified as ${plantData.plantName}. Safety info temporarily unavailable.`;
     }
 
-    // --- Step 3: YouTube Recipes ---
-    // FIX: We now attempt to fetch recipes regardless of safety check success,
-    // as long as we have a valid plant name and API key.
+    // --- Step 3: YouTube Contextual Search ---
+    // If Edible -> Search Recipes
+    // If Not Edible -> Search Benefits/Care
     let videos = [];
+    let videoContext = safetyData.isEdible ? "recipes" : "uses"; // To tell frontend what kind of videos these are
+
     if (YOUTUBE_KEY && plantData.plantName) {
-        console.log('3. Finding Recipes...');
+        const searchTerm = safetyData.isEdible 
+            ? `how to cook ${plantData.plantName} recipe`
+            : `${plantData.plantName} plant benefits and uses`;
+            
+        console.log(`3. Finding Videos (${searchTerm})...`);
         try {
             const ytResponse = await axios.get(YOUTUBE_API_URL, {
                 params: {
                     part: 'snippet',
                     maxResults: 3,
-                    q: `how to cook ${plantData.plantName} recipe`,
+                    q: searchTerm,
                     type: 'video',
                     key: YOUTUBE_KEY
                 }
@@ -179,8 +185,7 @@ app.post('/api/identify-plant', async (req, res) => {
                     title: item.snippet.title,
                     channel: item.snippet.channelTitle,
                     link: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-                    thumbnail: item.snippet.thumbnails.medium.url,
-                    duration: "Video" // YouTube API part=contentDetails needed for real duration, saving quota by skipping
+                    thumbnail: item.snippet.thumbnails.medium.url
                 }));
             }
         } catch (ytError) {
@@ -195,6 +200,7 @@ app.post('/api/identify-plant', async (req, res) => {
       confidenceScore: plantData.probability,
       imageUrl: finalDisplayImage, 
       videos: videos,
+      videoContext: videoContext, // Pass this to frontend
       ...safetyData
     };
 
