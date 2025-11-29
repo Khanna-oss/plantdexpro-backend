@@ -20,6 +20,7 @@ const GEMINI_KEY = (process.env.GEMINI_API_KEY || process.env.API_KEY || '').tri
 
 const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3/search';
 
+// --- Startup Check ---
 console.log("--- API Key Status ---");
 console.log(`Plant Key:    ${PLANT_KEY ? 'Loaded' : 'MISSING'}`);
 console.log(`YouTube Key:  ${YOUTUBE_KEY ? 'Loaded' : 'MISSING'}`);
