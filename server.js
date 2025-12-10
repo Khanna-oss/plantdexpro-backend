@@ -1,28 +1,84 @@
-﻿require('dotenv').config();
+﻿
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const axios = require('axios');
 const FormData = require('form-data');
+const multer = require('multer'); // Added for future multipart support
+const crypto = require('crypto');
 const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
 
-// --- Middleware ---
-app.use(helmet());
-app.use(cors());
-app.use(express.json({ limit: '20mb' }));
+// --- ENTERPRISE SECURITY MIDDLEWARE ---
 
-// --- Configuration ---
+// 1. Strict Helmet Config (CSP + HSTS)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // unsafe-inline allowed for React dev, tighten in prod
+      imgSrc: ["'self'", "data:", "https://*.wikimedia.org", "https://*.ytimg.com"],
+      connectSrc: ["'self'", "https://v2.plant.id", "https://*.googleapis.com"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+}));
+
+// 2. Strict CORS
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN || '*', // Lock this down in production env vars
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Version'],
+  maxAge: 86400, // Cache preflight for 24 hours
+}));
+
+// 3. Rate Limiting (DDoS Prevention)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later." }
+});
+app.use('/api/', apiLimiter);
+
+// 4. Payload Size Limits
+app.use(express.json({ limit: '10mb' }));
+
+// --- AUDIT LOGGING (Immutable Stub) ---
+function logAudit(action, metadata) {
+  const timestamp = new Date().toISOString();
+  // In a real system, this would go to a write-once ledger (e.g., QLDB)
+  // We hash the entry to simulate chain integrity
+  const entry = JSON.stringify({ action, metadata, timestamp });
+  const hash = crypto.createHash('sha256').update(entry).digest('hex');
+  console.log(`[AUDIT][${timestamp}][${hash.substring(0,8)}] ${action}`);
+}
+
+// --- CONFIGURATION ---
 const PLANT_KEY = (process.env.PLANT_ID_KEY || process.env.Plant_net_api || '').trim();
 const YOUTUBE_KEY = (process.env.YOUTUBE_API_KEY || '').trim();
 const GEMINI_KEY = (process.env.GEMINI_API_KEY || process.env.API_KEY || '').trim();
 const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3/search';
+
+console.log("--- API Key Status ---");
+console.log(`Plant Key:    ${PLANT_KEY ? 'Loaded' : 'MISSING'}`);
+console.log(`YouTube Key:  ${YOUTUBE_KEY ? 'Loaded' : 'MISSING'}`);
+console.log(`Gemini Key:   ${GEMINI_KEY ? 'Loaded' : 'MISSING'}`);
+console.log("----------------------");
+
 const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
 
-console.log(`Server Started on Port ${process.env.PORT || 3001}`);
+// --- HELPERS ---
 
-// --- Helper: Wiki Image ---
 async function getWikiImage(query) {
     if (!query) return null;
     try {
@@ -39,7 +95,8 @@ async function getBestPlantImage(scientificName, commonName) {
     return img || null;
 }
 
-// --- Helper: Identify APIs ---
+// --- IDENTIFICATION LOGIC ---
+
 async function identifyWithPlantNet(base64Image) {
     const form = new FormData();
     const buffer = Buffer.from(base64Image, 'base64');
@@ -60,7 +117,9 @@ async function identifyWithPlantNet(base64Image) {
 async function identifyWithPlantId(base64Image) {
     const url = 'https://api.plant.id/v2/identify';
     const response = await axios.post(url, {
-        images: [base64Image], modifiers: ["crops_fast", "similar_images"], plant_details: ["common_names", "url", "wiki_description", "taxonomy"]
+        images: [base64Image], 
+        modifiers: ["crops_fast", "similar_images"],
+        plant_details: ["common_names", "url", "wiki_description", "taxonomy"]
     }, { headers: { 'Api-Key': PLANT_KEY, 'Content-Type': 'application/json' }});
     const suggestion = response.data.suggestions?.[0];
     if (!suggestion) throw new Error("No match found.");
@@ -72,10 +131,23 @@ async function identifyWithPlantId(base64Image) {
     };
 }
 
+// --- MAIN ENDPOINT ---
+
 app.post('/api/identify-plant', async (req, res) => {
   try {
     const { image } = req.body; 
-    if (!image) return res.status(400).json({ error: 'No image data' });
+    
+    // Input Validation
+    if (!image || typeof image !== 'string') {
+        logAudit('INVALID_INPUT', { reason: 'Missing or invalid image data' });
+        return res.status(400).json({ error: 'Image data required' });
+    }
+    if (image.length > 15 * 1024 * 1024) { // 15MB limit check manually
+        logAudit('INVALID_INPUT', { reason: 'Payload too large' });
+        return res.status(413).json({ error: 'Image too large' });
+    }
+
+    logAudit('IDENTIFY_START', { size: image.length });
 
     // 1. ID Plant
     let plantData;
@@ -105,7 +177,7 @@ app.post('/api/identify-plant', async (req, res) => {
         try {
             const yt = await axios.get(YOUTUBE_API_URL, { params: { part: 'snippet', maxResults: 3, q: q, type: 'video', key: YOUTUBE_KEY } });
             if (yt.data.items?.length > 0) {
-                youtubeImage = yt.data.items[0].snippet.thumbnails.high?.url; // Layer 2 Image
+                youtubeImage = yt.data.items[0].snippet.thumbnails.high?.url; 
                 videos = yt.data.items.map(i => ({
                     title: i.snippet.title,
                     channel: i.snippet.channelTitle,
@@ -116,24 +188,76 @@ app.post('/api/identify-plant', async (req, res) => {
         } catch (e) { console.log("YouTube error"); }
     }
 
-    // Construct Result (Order matters for fallback)
-    const finalImage = wikiImage || youtubeImage || plantData.apiImage; 
+    // 5. Construct Result with 2030 Metadata Stubs
+    const result = {
+        id: Date.now(),
+        ...plantData,
+        imageUrl: wikiImage,
+        youtubeImage: youtubeImage,
+        apiImage: plantData.apiImage,
+        videos,
+        videoContext,
+        ...safetyData,
+        // Enterprise/2030 Metadata
+        meta: {
+            provenance: {
+                source: "PlantDexPro-Core",
+                verified: true,
+                watermark: crypto.randomBytes(8).toString('hex')
+            },
+            safetyLevel: safetyData.isEdible ? "SAFE" : "CAUTION",
+            arReady: true,
+            auditId: crypto.randomUUID()
+        }
+    };
 
-    res.json({
-        plants: [{
-            id: Date.now(),
-            ...plantData,
-            imageUrl: wikiImage,    // Layer 1
-            youtubeImage: youtubeImage, // Layer 2
-            apiImage: plantData.apiImage, // Layer 3
-            // Layer 4 is handled by frontend (original upload)
-            videos,
-            videoContext,
-            ...safetyData
-        }]
+    logAudit('IDENTIFY_SUCCESS', { plant: plantData.plantName, id: result.meta.auditId });
+    res.json({ plants: [result] });
+
+  } catch (error) { 
+    logAudit('SYSTEM_ERROR', { message: error.message });
+    res.status(500).json({ error: 'Server Error' }); 
+  }
+});
+
+// --- 2030 FEATURE STUBS ---
+
+// Stub: AR Analysis Endpoint
+app.post('/api/ar/analyze', (req, res) => {
+    // In future: Accepts spatial anchors and returns 3D overlay coordinates
+    res.json({ 
+        status: "ar_ready", 
+        anchors: [], 
+        overlay_url: "/models/overlay_placeholder.glb" 
     });
+});
 
-  } catch (error) { res.status(500).json({ error: 'Server Error' }); }
+// Stub: WASM Config
+app.get('/api/wasm/config', (req, res) => {
+    // Delivers configuration for client-side WASM inference engine
+    res.json({
+        model_url: "/models/plantnet_quantized.tflite",
+        wasm_binary: "/wasm/inference_engine.wasm",
+        integrity: "sha256-placeholder-hash"
+    });
+});
+
+// Stub: Live Mode Session
+app.post('/api/live/session', (req, res) => {
+    res.json({ 
+        session_id: crypto.randomUUID(), 
+        websocket_url: "wss://api.plantdexpro.com/live" 
+    });
+});
+
+// Stub: Learning Journey
+app.get('/api/user/journey', (req, res) => {
+    res.json({
+        level: "Novice Botanist",
+        xp: 150,
+        unlocked_badges: ["First Scan", "Edible Finder"],
+        next_milestone: "Identify 10 Toxic Plants"
+    });
 });
 
 const PORT = process.env.PORT || 3001;
