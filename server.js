@@ -8,7 +8,7 @@ const axios = require('axios');
 const FormData = require('form-data');
 const multer = require('multer'); // Added for future multipart support
 const crypto = require('crypto');
-const { GoogleGenAI } = require('@google/genai');
+const Groq = require('groq-sdk');
 
 const app = express();
 
@@ -21,7 +21,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"], // unsafe-inline allowed for React dev, tighten in prod
       imgSrc: ["'self'", "data:", "https://*.wikimedia.org", "https://*.ytimg.com"],
-      connectSrc: ["'self'", "https://v2.plant.id", "https://*.googleapis.com"],
+      connectSrc: ["'self'", "https://v2.plant.id", "https://*.googleapis.com", "https://api.groq.com"],
       upgradeInsecureRequests: [],
     },
   },
@@ -66,16 +66,17 @@ function logAudit(action, metadata) {
 // --- CONFIGURATION ---
 const PLANT_KEY = (process.env.PLANT_ID_KEY || process.env.Plant_net_api || '').trim();
 const YOUTUBE_KEY = (process.env.YOUTUBE_API_KEY || '').trim();
-const GEMINI_KEY = (process.env.GEMINI_API_KEY || process.env.API_KEY || '').trim();
+// Use GROQ_API_KEY instead of Gemini
+const GROQ_KEY = (process.env.GROQ_API_KEY || '').trim();
 const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3/search';
 
 console.log("--- API Key Status ---");
 console.log(`Plant Key:    ${PLANT_KEY ? 'Loaded' : 'MISSING'}`);
 console.log(`YouTube Key:  ${YOUTUBE_KEY ? 'Loaded' : 'MISSING'}`);
-console.log(`Gemini Key:   ${GEMINI_KEY ? 'Loaded' : 'MISSING'}`);
+console.log(`Groq Key:     ${GROQ_KEY ? 'Loaded' : 'MISSING'}`);
 console.log("----------------------");
 
-const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
+const groq = new Groq({ apiKey: GROQ_KEY });
 
 // --- HELPERS ---
 
@@ -159,13 +160,25 @@ app.post('/api/identify-plant', async (req, res) => {
     // 2. Get Wiki Image
     const wikiImage = await getBestPlantImage(plantData.scientificName, plantData.plantName);
 
-    // 3. Safety Analysis
+    // 3. Safety Analysis (Replaced Gemini with Groq LLaMA)
     let safetyData = { isEdible: false, toxicParts: [], safetyWarnings: [], description: "", funFact: "" };
     try {
-        const prompt = `Analyze "${plantData.plantName}". Return JSON: {"isEdible": boolean, "edibleParts": ["string"], "toxicParts": ["string"], "safetyWarnings": ["string"], "description": "2 sentences.", "funFact": "One fun fact."}`;
-        const geminiResp = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: "application/json" } });
-        safetyData = JSON.parse(geminiResp.text.replace(/```json|```/g, '').trim());
-    } catch (e) { safetyData.description = "Safety info unavailable."; }
+        const prompt = `Analyze "${plantData.plantName}". Return a JSON object with this exact structure: {"isEdible": boolean, "edibleParts": ["string"], "toxicParts": ["string"], "safetyWarnings": ["string"], "description": "2 sentences.", "funFact": "One fun fact."}`;
+        
+        const completion = await groq.chat.completions.create({
+            model: "llama-3.1-70b-versatile", // Use a text model for metadata analysis
+            messages: [
+                { role: "user", content: prompt }
+            ],
+            response_format: { type: "json_object" }
+        });
+        
+        const text = completion.choices[0]?.message?.content || "{}";
+        safetyData = JSON.parse(text);
+    } catch (e) { 
+        console.error("Groq Analysis Error", e);
+        safetyData.description = "Safety info unavailable."; 
+    }
 
     // 4. Videos & Image Fallback
     let videos = [];
