@@ -6,9 +6,9 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const axios = require('axios');
 const FormData = require('form-data');
-const multer = require('multer'); // Added for future multipart support
+const multer = require('multer'); 
 const crypto = require('crypto');
-const Groq = require('groq-sdk');
+const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 
@@ -19,9 +19,9 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // unsafe-inline allowed for React dev, tighten in prod
+      scriptSrc: ["'self'", "'unsafe-inline'"], 
       imgSrc: ["'self'", "data:", "https://*.wikimedia.org", "https://*.ytimg.com"],
-      connectSrc: ["'self'", "https://v2.plant.id", "https://*.googleapis.com", "https://api.groq.com"],
+      connectSrc: ["'self'", "https://v2.plant.id", "https://*.googleapis.com"],
       upgradeInsecureRequests: [],
     },
   },
@@ -34,16 +34,16 @@ app.use(helmet({
 
 // 2. Strict CORS
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGIN || '*', // Lock this down in production env vars
+  origin: process.env.ALLOWED_ORIGIN || '*', 
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Version'],
-  maxAge: 86400, // Cache preflight for 24 hours
+  maxAge: 86400, 
 }));
 
 // 3. Rate Limiting (DDoS Prevention)
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
+  windowMs: 15 * 60 * 1000, 
+  max: 100, 
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later." }
@@ -53,11 +53,9 @@ app.use('/api/', apiLimiter);
 // 4. Payload Size Limits
 app.use(express.json({ limit: '10mb' }));
 
-// --- AUDIT LOGGING (Immutable Stub) ---
+// --- AUDIT LOGGING ---
 function logAudit(action, metadata) {
   const timestamp = new Date().toISOString();
-  // In a real system, this would go to a write-once ledger (e.g., QLDB)
-  // We hash the entry to simulate chain integrity
   const entry = JSON.stringify({ action, metadata, timestamp });
   const hash = crypto.createHash('sha256').update(entry).digest('hex');
   console.log(`[AUDIT][${timestamp}][${hash.substring(0,8)}] ${action}`);
@@ -66,17 +64,16 @@ function logAudit(action, metadata) {
 // --- CONFIGURATION ---
 const PLANT_KEY = (process.env.PLANT_ID_KEY || process.env.Plant_net_api || '').trim();
 const YOUTUBE_KEY = (process.env.YOUTUBE_API_KEY || '').trim();
-// Use GROQ_API_KEY instead of Gemini
-const GROQ_KEY = (process.env.GROQ_API_KEY || '').trim();
+const API_KEY = (process.env.API_KEY || '').trim();
 const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3/search';
 
 console.log("--- API Key Status ---");
 console.log(`Plant Key:    ${PLANT_KEY ? 'Loaded' : 'MISSING'}`);
 console.log(`YouTube Key:  ${YOUTUBE_KEY ? 'Loaded' : 'MISSING'}`);
-console.log(`Groq Key:     ${GROQ_KEY ? 'Loaded' : 'MISSING'}`);
+console.log(`Gemini Key:   ${API_KEY ? 'Loaded' : 'MISSING'}`);
 console.log("----------------------");
 
-const groq = new Groq({ apiKey: GROQ_KEY });
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 // --- HELPERS ---
 
@@ -143,7 +140,7 @@ app.post('/api/identify-plant', async (req, res) => {
         logAudit('INVALID_INPUT', { reason: 'Missing or invalid image data' });
         return res.status(400).json({ error: 'Image data required' });
     }
-    if (image.length > 15 * 1024 * 1024) { // 15MB limit check manually
+    if (image.length > 15 * 1024 * 1024) { 
         logAudit('INVALID_INPUT', { reason: 'Payload too large' });
         return res.status(413).json({ error: 'Image too large' });
     }
@@ -160,23 +157,23 @@ app.post('/api/identify-plant', async (req, res) => {
     // 2. Get Wiki Image
     const wikiImage = await getBestPlantImage(plantData.scientificName, plantData.plantName);
 
-    // 3. Safety Analysis (Replaced Gemini with Groq LLaMA)
+    // 3. Safety Analysis (Gemini)
     let safetyData = { isEdible: false, toxicParts: [], safetyWarnings: [], description: "", funFact: "" };
     try {
-        const prompt = `Analyze "${plantData.plantName}". Return a JSON object with this exact structure: {"isEdible": boolean, "edibleParts": ["string"], "toxicParts": ["string"], "safetyWarnings": ["string"], "description": "2 sentences.", "funFact": "One fun fact."}`;
+        const prompt = `Analyze "${plantData.plantName}". Return a valid JSON object with: {"isEdible": boolean, "edibleParts": ["string"], "toxicParts": ["string"], "safetyWarnings": ["string"], "description": "2 sentences.", "funFact": "One fun fact."}`;
         
-        const completion = await groq.chat.completions.create({
-            model: "llama-3.1-70b-versatile", // Use a text model for metadata analysis
-            messages: [
-                { role: "user", content: prompt }
-            ],
-            response_format: { type: "json_object" }
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json'
+            }
         });
         
-        const text = completion.choices[0]?.message?.content || "{}";
+        const text = response.text || "{}";
         safetyData = JSON.parse(text);
     } catch (e) { 
-        console.error("Groq Analysis Error", e);
+        console.error("Gemini Analysis Error", e);
         safetyData.description = "Safety info unavailable."; 
     }
 
@@ -201,7 +198,6 @@ app.post('/api/identify-plant', async (req, res) => {
         } catch (e) { console.log("YouTube error"); }
     }
 
-    // 5. Construct Result with 2030 Metadata Stubs
     const result = {
         id: Date.now(),
         ...plantData,
@@ -211,7 +207,6 @@ app.post('/api/identify-plant', async (req, res) => {
         videos,
         videoContext,
         ...safetyData,
-        // Enterprise/2030 Metadata
         meta: {
             provenance: {
                 source: "PlantDexPro-Core",
@@ -233,44 +228,18 @@ app.post('/api/identify-plant', async (req, res) => {
   }
 });
 
-// --- 2030 FEATURE STUBS ---
-
-// Stub: AR Analysis Endpoint
+// STUBS
 app.post('/api/ar/analyze', (req, res) => {
-    // In future: Accepts spatial anchors and returns 3D overlay coordinates
-    res.json({ 
-        status: "ar_ready", 
-        anchors: [], 
-        overlay_url: "/models/overlay_placeholder.glb" 
-    });
+    res.json({ status: "ar_ready", anchors: [], overlay_url: "/models/overlay_placeholder.glb" });
 });
-
-// Stub: WASM Config
 app.get('/api/wasm/config', (req, res) => {
-    // Delivers configuration for client-side WASM inference engine
-    res.json({
-        model_url: "/models/plantnet_quantized.tflite",
-        wasm_binary: "/wasm/inference_engine.wasm",
-        integrity: "sha256-placeholder-hash"
-    });
+    res.json({ model_url: "/models/plantnet_quantized.tflite", wasm_binary: "/wasm/inference_engine.wasm", integrity: "sha256-placeholder-hash" });
 });
-
-// Stub: Live Mode Session
 app.post('/api/live/session', (req, res) => {
-    res.json({ 
-        session_id: crypto.randomUUID(), 
-        websocket_url: "wss://api.plantdexpro.com/live" 
-    });
+    res.json({ session_id: crypto.randomUUID(), websocket_url: "wss://api.plantdexpro.com/live" });
 });
-
-// Stub: Learning Journey
 app.get('/api/user/journey', (req, res) => {
-    res.json({
-        level: "Novice Botanist",
-        xp: 150,
-        unlocked_badges: ["First Scan", "Edible Finder"],
-        next_milestone: "Identify 10 Toxic Plants"
-    });
+    res.json({ level: "Novice Botanist", xp: 150, unlocked_badges: ["First Scan", "Edible Finder"], next_milestone: "Identify 10 Toxic Plants" });
 });
 
 const PORT = process.env.PORT || 3001;
