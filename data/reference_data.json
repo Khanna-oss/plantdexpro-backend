@@ -1,0 +1,352 @@
+[
+  {
+    "scientificName": "Ocimum basilicum",
+    "commonName": "Basil",
+    "description": "A popular culinary herb known for its aromatic leaves and sweet, peppery flavor.",
+    "edibleParts": ["Leaves", "Flowers"],
+    "vitamins": { "vitA": "High", "vitC": "Moderate", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Mentha",
+    "commonName": "Mint",
+    "description": "A refreshing herb used in teas, desserts, and savory dishes worldwide.",
+    "edibleParts": ["Leaves"],
+    "vitamins": { "vitA": "Moderate", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Salvia rosmarinus",
+    "commonName": "Rosemary",
+    "description": "A woody perennial herb with fragrant, evergreen, needle-like leaves.",
+    "edibleParts": ["Leaves", "Flowers"],
+    "vitamins": { "vitA": "Moderate", "vitC": "Low", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Thymus vulgaris",
+    "commonName": "Thyme",
+    "description": "A delicate herb with small leaves, essential for Mediterranean cooking.",
+    "edibleParts": ["Leaves", "Flowers"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Lavandula",
+    "commonName": "Lavender",
+    "description": "Known for its beautiful purple flowers and calming fragrance.",
+    "edibleParts": ["Flowers", "Leaves"],
+    "vitamins": { "vitA": "Low", "vitC": "Low", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Petroselinum crispum",
+    "commonName": "Parsley",
+    "description": "A versatile herb used as a garnish and flavor enhancer in many cuisines.",
+    "edibleParts": ["Leaves", "Stems"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Coriandrum sativum",
+    "commonName": "Cilantro",
+    "description": "Also known as coriander, it has a distinct citrusy flavor profile.",
+    "edibleParts": ["Leaves", "Seeds", "Roots"],
+    "vitamins": { "vitA": "Moderate", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Anethum graveolens",
+    "commonName": "Dill",
+    "description": "An aromatic herb often used in pickling and seafood dishes.",
+    "edibleParts": ["Leaves", "Seeds", "Flowers"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Salvia officinalis",
+    "commonName": "Sage",
+    "description": "A savory herb with fuzzy, grey-green leaves and a strong earthy flavor.",
+    "edibleParts": ["Leaves", "Flowers"],
+    "vitamins": { "vitA": "Moderate", "vitC": "Low", "calcium": "High" }
+  },
+  {
+    "scientificName": "Origanum vulgare",
+    "commonName": "Oregano",
+    "description": "A pungent herb that is a staple in Italian and Mexican cooking.",
+    "edibleParts": ["Leaves"],
+    "vitamins": { "vitA": "Moderate", "vitC": "Low", "calcium": "High" }
+  },
+  {
+    "scientificName": "Allium schoenoprasum",
+    "commonName": "Chives",
+    "description": "A mild onion-flavored herb with long, thin green leaves.",
+    "edibleParts": ["Leaves", "Flowers"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Laurus nobilis",
+    "commonName": "Bay Laurel",
+    "description": "The source of bay leaves, used to flavor soups and stews.",
+    "edibleParts": ["Leaves"],
+    "vitamins": { "vitA": "Moderate", "vitC": "Moderate", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Cymbopogon",
+    "commonName": "Lemongrass",
+    "description": "A tall, tropical grass with a fresh, lemony scent and flavor.",
+    "edibleParts": ["Stems", "Leaves"],
+    "vitamins": { "vitA": "Low", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Aloe vera",
+    "commonName": "Aloe Vera",
+    "description": "A succulent plant species known for its medicinal and cosmetic uses.",
+    "edibleParts": ["Gel", "Skin"],
+    "vitamins": { "vitA": "Moderate", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Taraxacum officinale",
+    "commonName": "Dandelion",
+    "description": "A common weed with highly nutritious leaves and flowers.",
+    "edibleParts": ["Leaves", "Flowers", "Roots"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "High" }
+  },
+  {
+    "scientificName": "Urtica dioica",
+    "commonName": "Nettle",
+    "description": "A stinging plant that becomes a nutritious green when cooked.",
+    "edibleParts": ["Leaves"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "High" }
+  },
+  {
+    "scientificName": "Portulaca oleracea",
+    "commonName": "Purslane",
+    "description": "A succulent weed rich in omega-3 fatty acids and vitamins.",
+    "edibleParts": ["Leaves", "Stems"],
+    "vitamins": { "vitA": "High", "vitC": "Moderate", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Stellaria media",
+    "commonName": "Chickweed",
+    "description": "A delicate, cooling herb often used in salads or as a potherb.",
+    "edibleParts": ["Leaves", "Stems", "Flowers"],
+    "vitamins": { "vitA": "Moderate", "vitC": "High", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Plantago major",
+    "commonName": "Plantain",
+    "description": "A common wild edible with leaves that can be used like spinach.",
+    "edibleParts": ["Leaves", "Seeds"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Arctium",
+    "commonName": "Burdock",
+    "description": "Known for its long, edible taproot used in Asian cuisine.",
+    "edibleParts": ["Roots", "Stems", "Leaves"],
+    "vitamins": { "vitA": "Low", "vitC": "Moderate", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Verbascum thapsus",
+    "commonName": "Mullein",
+    "description": "A tall biennial plant with fuzzy leaves, often used for herbal tea.",
+    "edibleParts": ["Leaves", "Flowers"],
+    "vitamins": { "vitA": "Low", "vitC": "Low", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Achillea millefolium",
+    "commonName": "Yarrow",
+    "description": "A flowering plant used for both its medicinal and culinary properties.",
+    "edibleParts": ["Leaves", "Flowers"],
+    "vitamins": { "vitA": "Moderate", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Matricaria chamomilla",
+    "commonName": "Chamomile",
+    "description": "Famous for its daisy-like flowers used to make calming herbal tea.",
+    "edibleParts": ["Flowers"],
+    "vitamins": { "vitA": "Low", "vitC": "Low", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Calendula officinalis",
+    "commonName": "Calendula",
+    "description": "Also known as pot marigold, its petals are edible and colorful.",
+    "edibleParts": ["Flowers"],
+    "vitamins": { "vitA": "Moderate", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Echinacea purpurea",
+    "commonName": "Echinacea",
+    "description": "A popular herb used to support the immune system.",
+    "edibleParts": ["Flowers", "Leaves", "Roots"],
+    "vitamins": { "vitA": "Low", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Panax",
+    "commonName": "Ginseng",
+    "description": "A slow-growing perennial plant with fleshy roots used in traditional medicine.",
+    "edibleParts": ["Roots"],
+    "vitamins": { "vitA": "Low", "vitC": "Low", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Curcuma longa",
+    "commonName": "Turmeric",
+    "description": "A bright orange root used as a spice and for its anti-inflammatory properties.",
+    "edibleParts": ["Roots", "Leaves"],
+    "vitamins": { "vitA": "Low", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Zingiber officinale",
+    "commonName": "Ginger",
+    "description": "A spicy, aromatic root used widely in cooking and medicine.",
+    "edibleParts": ["Roots"],
+    "vitamins": { "vitA": "Low", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Allium sativum",
+    "commonName": "Garlic",
+    "description": "A pungent bulb used as a fundamental seasoning in many cuisines.",
+    "edibleParts": ["Bulbs", "Scapes", "Leaves"],
+    "vitamins": { "vitA": "Low", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Allium cepa",
+    "commonName": "Onion",
+    "description": "A common vegetable used as a base for many savory dishes.",
+    "edibleParts": ["Bulbs", "Leaves"],
+    "vitamins": { "vitA": "Low", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Brassica oleracea var. sabellica",
+    "commonName": "Kale",
+    "description": "A nutrient-dense leafy green that is a member of the cabbage family.",
+    "edibleParts": ["Leaves"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "High" }
+  },
+  {
+    "scientificName": "Spinacia oleracea",
+    "commonName": "Spinach",
+    "description": "A leafy green vegetable rich in iron and vitamins.",
+    "edibleParts": ["Leaves"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Eruca vesicaria",
+    "commonName": "Arugula",
+    "description": "A peppery leafy green often used in salads and on pizzas.",
+    "edibleParts": ["Leaves", "Flowers"],
+    "vitamins": { "vitA": "High", "vitC": "Moderate", "calcium": "High" }
+  },
+  {
+    "scientificName": "Beta vulgaris subsp. vulgaris",
+    "commonName": "Swiss Chard",
+    "description": "A leafy green with colorful stalks, similar to spinach and beets.",
+    "edibleParts": ["Leaves", "Stems"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Brassica rapa subsp. chinensis",
+    "commonName": "Bok Choy",
+    "description": "A type of Chinese cabbage with crunchy white stalks and green leaves.",
+    "edibleParts": ["Leaves", "Stems"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "High" }
+  },
+  {
+    "scientificName": "Brassica juncea",
+    "commonName": "Mustard Greens",
+    "description": "Peppery greens that add a spicy kick to dishes.",
+    "edibleParts": ["Leaves"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Brassica oleracea var. viridis",
+    "commonName": "Collard Greens",
+    "description": "A staple of Southern US cuisine, these greens are tough and nutritious.",
+    "edibleParts": ["Leaves"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "High" }
+  },
+  {
+    "scientificName": "Nasturtium officinale",
+    "commonName": "Watercress",
+    "description": "A peppery aquatic plant that is one of the oldest known leaf vegetables.",
+    "edibleParts": ["Leaves", "Stems"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "High" }
+  },
+  {
+    "scientificName": "Rumex",
+    "commonName": "Sorrel",
+    "description": "A leafy green with a distinct tart, lemony flavor.",
+    "edibleParts": ["Leaves"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Levisticum officinale",
+    "commonName": "Lovage",
+    "description": "An herb with a flavor similar to celery but more intense.",
+    "edibleParts": ["Leaves", "Stems", "Roots"],
+    "vitamins": { "vitA": "Moderate", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Borago officinalis",
+    "commonName": "Borage",
+    "description": "An herb with cucumber-flavored leaves and beautiful blue flowers.",
+    "edibleParts": ["Leaves", "Flowers"],
+    "vitamins": { "vitA": "Moderate", "vitC": "High", "calcium": "Moderate" }
+  },
+  {
+    "scientificName": "Tropaeolum",
+    "commonName": "Nasturtium",
+    "description": "A colorful flowering plant where both leaves and flowers are edible.",
+    "edibleParts": ["Leaves", "Flowers", "Seeds"],
+    "vitamins": { "vitA": "Moderate", "vitC": "High", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Viola",
+    "commonName": "Violas",
+    "description": "Small, colorful flowers often used as edible garnishes.",
+    "edibleParts": ["Flowers", "Leaves"],
+    "vitamins": { "vitA": "Moderate", "vitC": "High", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Viola × wittrockiana",
+    "commonName": "Pansies",
+    "description": "Large-flowered violas that are popular for decorating desserts.",
+    "edibleParts": ["Flowers"],
+    "vitamins": { "vitA": "Moderate", "vitC": "High", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Tagetes",
+    "commonName": "Marigolds",
+    "description": "Bright flowers that can be used to add color and a citrusy flavor to salads.",
+    "edibleParts": ["Flowers"],
+    "vitamins": { "vitA": "Moderate", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Helianthus annuus",
+    "commonName": "Sunflowers",
+    "description": "Grown for their edible seeds and oil, but petals are also edible.",
+    "edibleParts": ["Seeds", "Petals", "Buds"],
+    "vitamins": { "vitA": "Low", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Cucurbita pepo",
+    "commonName": "Zucchini Blossoms",
+    "description": "The edible flowers of the zucchini plant, often stuffed and fried.",
+    "edibleParts": ["Flowers"],
+    "vitamins": { "vitA": "Moderate", "vitC": "Moderate", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Hibiscus rosa-sinensis",
+    "commonName": "Hibiscus",
+    "description": "Tropical flowers used to make tart, vitamin-rich herbal teas.",
+    "edibleParts": ["Flowers"],
+    "vitamins": { "vitA": "Low", "vitC": "High", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Rosa",
+    "commonName": "Rose Petals",
+    "description": "Fragrant petals used in jams, desserts, and Middle Eastern cuisine.",
+    "edibleParts": ["Petals", "Hips"],
+    "vitamins": { "vitA": "Moderate", "vitC": "High", "calcium": "Low" }
+  },
+  {
+    "scientificName": "Sambucus",
+    "commonName": "Elderberry",
+    "description": "Known for its dark berries used in syrups and medicinal preparations.",
+    "edibleParts": ["Berries", "Flowers"],
+    "vitamins": { "vitA": "High", "vitC": "High", "calcium": "Low" }
+  }
+]
